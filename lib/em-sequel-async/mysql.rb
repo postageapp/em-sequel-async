@@ -14,11 +14,16 @@ class EmSequelAsync::Mysql
     def notify_readable
       detach
 
-      if (logger = @client.logger)
-        logger.debug("(%.6fs) [C] %s" % [ Time.now - @start_time, @sql ])
-      end
+      @client.logger(:debug, "(%.6fs) [C] %s" % [ Time.now - @start_time, @sql ])
+      
+      result = 
+        begin
+          @client.async_result
+        rescue => e
+          e
+        end
 
-      @callback.call(@client.async_result, Time.now - @start_time, @client)
+      @callback.call(result, Time.now - @start_time, @client)
       
       @client.ready!
     end
@@ -31,15 +36,15 @@ class EmSequelAsync::Mysql
       @pool and @pool.add(self)
     end
     
-    def logger
-      @pool and @pool.logger
+    def logger(type, message)
+      @pool and @pool.logger.send(type, message)
     end
 
     def query(sql, options = { })
       if (EventMachine.reactor_running? and block_given?)
         super(sql, options.merge(:async => true))
 
-        logger.debug("(...) [?] %s" % [ @sql ])
+        logger(:debug, "(...) [?] %s" % [ @sql ])
 
         EventMachine.watch(self.socket, EmSequelAsync::Mysql::Query, self, sql, Proc.new).notify_readable = true
       else
@@ -47,9 +52,7 @@ class EmSequelAsync::Mysql
 
         result = super(sql, options)
         
-        if (_logger = self.logger)
-          _logger.debug("(%.6fs) [F] %s" % [ Time.now - start_time, sql ])
-        end
+        logger(:debug, "(%.6fs) [F] %s" % [ Time.now - start_time, sql ])
         
         result
       end
@@ -103,32 +106,34 @@ class EmSequelAsync::Mysql
       else
         query = @query_queue.pop
         
-        connection.query(query[0], &query[2])
+        connection.query(query[0], &query[1])
       end
     end
+    
+    def pool_connection
+      connection = @connection_pool.pop
 
-    def execute(query, cblk = nil, eblk = nil, &blk)
-      args = [ query, cblk || blk, eblk ]
-
-      if (connection = @connection_pool.pop)
-        @connections_active[connection] = Time.now
-
-        connection.query(query, &cblk)
-
-        return :executing
-      end 
-      
-      if (@connections.length < self.class.size)
+      if (!connection and @connections.length < self.class.size)
         connection = EmSequelAsync::Mysql::Client.new(@options)
-        
-        @connections[connection] = true
-        
-        connection.query(args[0], &args[2])
       end
-      
-      @query_queue << args
 
-      :queued
+      @connections_active[connection] = Time.now
+      
+      connection
+    end
+
+    def query(query, callback = nil, &block)
+      callback ||= block
+
+      if (connection = self.pool_connection)
+        connection.query(query, &callback)
+
+        :executing
+      else
+        @query_queue << [ query, callback ]
+
+        :queued
+      end
     end
   end
 end

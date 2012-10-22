@@ -73,39 +73,117 @@ class TestEmSequelAsync < Test::Unit::TestCase
     assert_not_equal DbAModel.db.async, DbBModel.db.async
   end
 
-  def test_async_insert_df
+  def test_model_async_insert
+    inserted_id = nil
+    
     em do
-      inserted = false
-      
-      defer do
-        await do |callback|
-          DbDefaultAModel.async_insert(:data => 'Test Name') do
-            inserted = inserted_id
-            callback.call
+      await do
+        DbDefaultAModel.async_insert(
+          :data => 'Test Name',
+          &defer do |id|
+            inserted_id = id
           end
-        end
-      end
+        )
 
-      assert inserted > 0
+        assert_equal nil, inserted_id
+      end
     end
+
+    assert inserted_id
+    assert inserted_id > 0
   end
   
-  def test_async_insert
-    EventMachine.run do
-      inserted = false
-      
-      f = Fiber.new do
-        DbDefaultAModel.async_insert(:data => 'Test Name') do |inserted_id|
-          inserted = inserted_id
-          f.resume
-        end
-        
-        Fiber.yield
+  def test_model_async_insert_ignore
+    inserted_id = nil
+    inserted_count = nil
+    found_count = nil
+    deleted_count = nil
 
-        assert inserted > 0
-      end.resume
+    em do
+      await do
+        DbDefaultAModel.async_insert(
+          :data => 'Test Name',
+          &defer do |id|
+            inserted_id = id
+            puts "INSERTED: #{id}"
+            
+            assert inserted_id > 0
+
+            DbDefaultAModel.where(:id => inserted_id).async_count(
+              &defer do |count|
+                found_count = count
+              end
+            )
+
+            DbDefaultAModel.async_insert_ignore(
+              :id => inserted_id,
+              :data => 'Duplicate',
+              &defer do |count|
+                inserted_count = count
+              end
+            )
+          end
+        )
+      end
       
-      EventMachine.stop_event_loop
+      assert_equal 0, inserted_count
+      assert_equal 1, found_count
+      
+      delete_count = nil
+      
+      await do
+        DbDefaultAModel.where(:id => inserted_id).async_delete(
+          &defer do |count|
+            deleted_count = count
+            
+            assert_equal 1, deleted_count
+            
+            DbDefaultAModel.where(:id => inserted_id).async_count(
+              &defer do |count|
+                found_count = count
+
+                DbDefaultAModel.async_insert_ignore(
+                  :id => inserted_id,
+                  :data => 'Duplicate',
+                  &defer do |count|
+                    inserted_count = count
+                  end
+                )
+              end
+            )
+          end
+        )
+      end
+    end
+
+    assert_equal 0, found_count
+    assert_equal 1, deleted_count
+    assert_equal 1, inserted_count
+  end
+
+  def test_dataset_async_insert_duplicate
+    em do
+      inserted_id = nil
+      duplicate_id = false
+      
+      await do
+        DbDefaultAModel.async_insert(
+          :data => 'Test Name',
+          &defer do |id|
+            inserted_id = id
+            
+            DbDefaultAModel.async_insert(
+              :id => inserted_id,
+              :data => 'Duplicate',
+              &defer do |id|
+                duplicate_id = id
+              end
+            )
+          end
+        )
+      end
+      
+      assert_equal nil, duplicate_id
     end
   end
 end

@@ -52,15 +52,19 @@ module EmSequelAsync::SequelExtensions
       }.freeze
       
       def async_insert(*args)
-        self.db.async.execute(insert_sql(*args)) do |result, time, client|
-          yield(client.last_id) if (block_given?)
+        self.db.async.query(insert_sql(*args)) do |result, time, client|
+          if (result.is_a?(Exception))
+            yield(nil) if (block_given?)
+          else
+            yield(client.last_id) if (block_given?)
+          end
         end
 
         return
       end
 
       def async_insert_ignore(*args)
-        self.db.async.execute(insert_ignore.insert_sql(*args)) do |result, time, client|
+        self.db.async.query(insert_ignore.insert_sql(*args)) do |result, time, client|
           yield(client.affected_rows) if (block_given?)
         end
 
@@ -68,7 +72,7 @@ module EmSequelAsync::SequelExtensions
       end
 
       def async_update(*args)
-        self.db.async.execute(update_sql(*args)) do |result, time, client|
+        self.db.async.query(update_sql(*args)) do |result, time, client|
           yield(client.affected_rows) if (block_given?)
         end
 
@@ -76,7 +80,8 @@ module EmSequelAsync::SequelExtensions
       end
 
       def async_delete
-        self.db.async.execute(delete_sql) do |result, time, client|
+        puts delete_sql.inspect
+        self.db.async.query(delete_sql) do |result, time, client|
           yield(client.affected_rows) if (block_given?)
         end
 
@@ -84,7 +89,7 @@ module EmSequelAsync::SequelExtensions
       end
 
       def async_multi_insert(*args)
-        self.db.async.execute(multi_insert_sql(*args).first) do |result, time, client|
+        self.db.async.query(multi_insert_sql(*args).first) do |result, time, client|
           yield(client.affected_rows) if (block_given?)
         end
         
@@ -92,7 +97,7 @@ module EmSequelAsync::SequelExtensions
       end
 
       def async_multi_insert_ignore(*args)
-        self.db.async.execute(insert_ignore.multi_insert_sql(*args).first) do |result, time, client|
+        self.db.async.query(insert_ignore.multi_insert_sql(*args).first) do |result, time, client|
           yield(client.affected_rows) if (block_given?)
         end
         
@@ -100,7 +105,7 @@ module EmSequelAsync::SequelExtensions
       end
       
       def async_fetch_rows(sql, iter = :each)
-        self.db.async.execute(sql) do |result|
+        self.db.async.query(sql) do |result|
           case (result)
           when Mysql2::Result
             case (iter)
@@ -118,8 +123,10 @@ module EmSequelAsync::SequelExtensions
       end
 
       def async_first(sql)
-        self.db.async.raw(sql, :all) do |rows|
+        async_fetch_rows(sql, :each) do |result|
           yield(rows && rows[0])
+
+          return
         end
       end
 
@@ -148,12 +155,9 @@ module EmSequelAsync::SequelExtensions
       end
 
       def async_count(&callback)
-        if (options_overlap(COUNT_FROM_SELF_OPTS))
-          from_self.async_count(&callback)
-        else
-          clone(STOCK_COUNT_OPTS).async_each do |row|
-            yield(row.is_a?(Hash) ? row.values.first.to_i : row.values.values.first.to_i)
-          end
+        self.db.async.query(COUNT(:*){}.as(count)) do |result|
+          puts result.inspect
+          yield(result && result.first.to_a[0])
         end
 
         return
@@ -170,9 +174,10 @@ module EmSequelAsync::SequelExtensions
         :async_each,
         :async_all,
         :async_update,
-        :async_count
+        :async_count,
+        :async_delete
       ].each do |method|
-         eval %[
+         eval %Q[
           def #{method}(*args, &callback)
             dataset.#{method}(*args, &callback)
           end
