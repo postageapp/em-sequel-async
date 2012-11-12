@@ -80,7 +80,6 @@ module EmSequelAsync::SequelExtensions
       end
 
       def async_delete
-        puts delete_sql.inspect
         self.db.async.query(delete_sql) do |result, time, client|
           yield(client.affected_rows) if (block_given?)
         end
@@ -107,7 +106,7 @@ module EmSequelAsync::SequelExtensions
       def async_fetch_rows(sql, iter = :each)
         self.db.async.query(sql) do |result|
           case (result)
-          when Mysql2::Result
+          when Array
             case (iter)
             when :each
               result.each do |row|
@@ -131,7 +130,9 @@ module EmSequelAsync::SequelExtensions
       end
 
       def async_each
+        puts "EACH #{select_sql}"
         async_fetch_rows(select_sql, :each) do |row|
+          puts "ROW=#{row.inspect}"
           if (row_proc = @row_proc)
             yield(row_proc.call(row))
           else
@@ -155,11 +156,24 @@ module EmSequelAsync::SequelExtensions
       end
 
       def async_count(&callback)
-        self.db.async.query(COUNT(:*){}.as(count)) do |result|
-          puts result.inspect
-          yield(result && result.first.to_a[0])
+        puts ">>> IN"
+        if (options_overlap(Sequel::Dataset::COUNT_FROM_SELF_OPTS))
+          puts "XAA #{from_self.inspect}"
+          from_self.async_count(&callback)
+        else
+          clone(STOCK_COUNT_OPTS).async_each do |row|
+            puts "RB #{row}"
+            callback.call(
+              case (row)
+              when Hash
+                row.values.first.to_i
+              else
+                row.values.values.first.to_i
+              end
+            )
+          end
         end
-
+        
         return
       end
     end
@@ -188,7 +202,7 @@ module EmSequelAsync::SequelExtensions
       # array of hashes rather than a series of arrays. The columns are
       # automatically determined based on the keys of first hash provided.
       def async_multi_insert_ignore_hash(hashes)
-        if (hash.empty?)
+        if (hashes.empty?)
           yield if (block_given?)
 
           return

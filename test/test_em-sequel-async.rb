@@ -104,13 +104,14 @@ class TestEmSequelAsync < Test::Unit::TestCase
         DbDefaultAModel.async_insert(
           :data => 'Test Name',
           &defer do |id|
+            puts "AA"
             inserted_id = id
-            puts "INSERTED: #{id}"
             
             assert inserted_id > 0
 
             DbDefaultAModel.where(:id => inserted_id).async_count(
               &defer do |count|
+                puts "AB"
                 found_count = count
               end
             )
@@ -119,6 +120,7 @@ class TestEmSequelAsync < Test::Unit::TestCase
               :id => inserted_id,
               :data => 'Duplicate',
               &defer do |count|
+                puts "AC"
                 inserted_count = count
               end
             )
@@ -128,16 +130,20 @@ class TestEmSequelAsync < Test::Unit::TestCase
       
       assert_equal 0, inserted_count
       assert_equal 1, found_count
-      
+    end
+    
+    em do
+      found_count = nil
       delete_count = nil
+      inserted_count = nil
       
-      await do
+      await do |a|
         DbDefaultAModel.where(:id => inserted_id).async_delete(
           &defer do |count|
             deleted_count = count
             
             assert_equal 1, deleted_count
-            
+
             DbDefaultAModel.where(:id => inserted_id).async_count(
               &defer do |count|
                 found_count = count
@@ -155,10 +161,26 @@ class TestEmSequelAsync < Test::Unit::TestCase
         )
       end
     end
-
+    
     assert_equal 0, found_count
     assert_equal 1, deleted_count
     assert_equal 1, inserted_count
+  end
+  
+  def test_dataset_async_count
+    models_count = nil
+    
+    em do
+      await do
+        DB[:default][:db_default_a_models].async_count(
+          &defer do |count|
+            models_count = count
+          end
+        )
+      end
+    end
+    
+    assert_equal DB[:default][:db_default_a_models].count, models_count
   end
 
   def test_dataset_async_insert_duplicate
