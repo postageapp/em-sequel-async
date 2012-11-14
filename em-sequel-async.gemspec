@@ -9,7 +9,7 @@ Gem::Specification.new do |s|
 
   s.required_rubygems_version = Gem::Requirement.new(">= 0") if s.respond_to? :required_rubygems_version=
   s.authors = ["Scott Tadman"]
-  s.date = "2012-10-23"
+  s.date = "2012-11-14"
   s.description = "Implements a number of asynchronous helper methods for Sequel"
   s.email = "scott@twg.ca"
   s.extra_rdoc_files = [
@@ -19,14 +19,15 @@ Gem::Specification.new do |s|
   s.files = [
     ".document",
     "Gemfile",
-    "Gemfile.lock",
     "LICENSE.txt",
     "README.rdoc",
     "Rakefile",
+    "VERSION",
+    "em-sequel-async.gemspec",
     "lib/em-sequel-async.rb",
     "lib/em-sequel-async/mysql.rb",
     "lib/em-sequel-async/sequel_extensions.rb",
-    "lib/sequel/extensions/em-sequel-async.rb",
+    "lib/sequel/extensions/em_sequel_async.rb",
     "test/helper.rb",
     "test/test_em-sequel-async.rb"
   ]
@@ -43,12 +44,14 @@ Gem::Specification.new do |s|
       s.add_runtime_dependency(%q<sequel>, [">= 0"])
       s.add_runtime_dependency(%q<mysql2>, [">= 0"])
       s.add_runtime_dependency(%q<eventmachine>, [">= 0"])
+      s.add_development_dependency(%q<await>, [">= 0"])
       s.add_development_dependency(%q<bundler>, [">= 0"])
       s.add_development_dependency(%q<jeweler>, [">= 0"])
     else
       s.add_dependency(%q<sequel>, [">= 0"])
       s.add_dependency(%q<mysql2>, [">= 0"])
       s.add_dependency(%q<eventmachine>, [">= 0"])
+      s.add_dependency(%q<await>, [">= 0"])
       s.add_dependency(%q<bundler>, [">= 0"])
       s.add_dependency(%q<jeweler>, [">= 0"])
     end
@@ -56,6 +59,7 @@ Gem::Specification.new do |s|
     s.add_dependency(%q<sequel>, [">= 0"])
     s.add_dependency(%q<mysql2>, [">= 0"])
     s.add_dependency(%q<eventmachine>, [">= 0"])
+    s.add_dependency(%q<await>, [">= 0"])
     s.add_dependency(%q<bundler>, [">= 0"])
     s.add_dependency(%q<jeweler>, [">= 0"])
   end
