@@ -52,68 +52,52 @@ module EmSequelAsync::SequelExtensions
       }.freeze
       
       def async_insert(*args)
-        self.db.async.query(insert_sql(*args)) do |result, time, client|
-          if (result.is_a?(Exception))
-            yield(nil) if (block_given?)
-          else
-            yield(client.last_id) if (block_given?)
-          end
+        self.db.async.query(insert_sql(*args)) do |result, time, client, err|
+          yield(err ? nil : client.last_id) if (block_given?)
         end
 
-        return
-      end
-
-      def async_insert_ignore(*args)
-        self.db.async.query(insert_ignore.insert_sql(*args)) do |result, time, client|
-          yield(client.affected_rows) if (block_given?)
-        end
-
-        return
-      end
-
-      def async_update(*args)
-        self.db.async.query(update_sql(*args)) do |result, time, client|
-          yield(client.affected_rows) if (block_given?)
-        end
-
-        return
-      end
-
-      def async_delete
-        self.db.async.query(delete_sql) do |result, time, client|
-          yield(client.affected_rows) if (block_given?)
-        end
-
-        return
-      end
-
-      def async_multi_insert(*args)
-        self.db.async.query(multi_insert_sql(*args).first) do |result, time, client|
-          yield(client.affected_rows) if (block_given?)
-        end
-        
-        return
-      end
-
-      def async_multi_insert_ignore(*args)
-        self.db.async.query(insert_ignore.multi_insert_sql(*args).first) do |result, time, client|
-          yield(client.affected_rows) if (block_given?)
-        end
-        
         return
       end
       
+      def async_query_return_affected_rows(query)
+        self.db.async.query(query) do |result, time, client, err|
+          yield(err ? nil : client.affected_rows) if (block_given?)
+        end
+
+        return
+      end
+
+      def async_insert_ignore(*args, &block)
+        self.async_query_return_affected_rows(insert_ignore.insert_sql(*args), &block)
+      end
+
+      def async_update(*args, &block)
+        self.async_query_return_affected_rows(update_sql(*args), &block)
+      end
+
+      def async_delete(&block)
+        self.async_query_return_affected_rows(delete_sql, &block)
+      end
+
+      def async_multi_insert(*args, &block)
+        self.async_query_return_affected_rows(multi_insert_sql(*args).first, &block)
+      end
+
+      def async_multi_insert_ignore(*args, &block)
+        self.async_query_return_affected_rows(insert_ignore.multi_insert_sql(*args).first, &block)
+      end
+      
       def async_fetch_rows(sql, iter = :each)
-        self.db.async.query(sql) do |result|
+        self.db.async.query(sql) do |result, time, client, err|
           case (result)
-          when Array
+          when Mysql2::Result
             case (iter)
             when :each
               result.each do |row|
                 yield(row)
               end
             else
-              yield(result)
+              yield(result.to_a)
             end
           end
         end
@@ -122,7 +106,7 @@ module EmSequelAsync::SequelExtensions
       end
 
       def async_first(sql)
-        async_fetch_rows(sql, :each) do |result|
+        async_fetch_rows(sql, :each) do |result, time, client, err|
           yield(rows && rows[0])
 
           return
@@ -130,9 +114,7 @@ module EmSequelAsync::SequelExtensions
       end
 
       def async_each
-        puts "EACH #{select_sql}"
         async_fetch_rows(select_sql, :each) do |row|
-          puts "ROW=#{row.inspect}"
           if (row_proc = @row_proc)
             yield(row_proc.call(row))
           else
@@ -156,13 +138,10 @@ module EmSequelAsync::SequelExtensions
       end
 
       def async_count(&callback)
-        puts ">>> IN"
         if (options_overlap(Sequel::Dataset::COUNT_FROM_SELF_OPTS))
-          puts "XAA #{from_self.inspect}"
           from_self.async_count(&callback)
         else
           clone(STOCK_COUNT_OPTS).async_each do |row|
-            puts "RB #{row}"
             callback.call(
               case (row)
               when Hash
