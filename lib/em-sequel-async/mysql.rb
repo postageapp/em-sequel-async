@@ -94,6 +94,11 @@ class EmSequelAsync::Mysql
       end
     end
 
+    def remove(connection)
+      @connections.delete(connection)
+      @connections_active.delete(connection)
+    end
+
     def delegate_query(connection, query, callback)
       @connections[connection] = [ query, callback ]
 
@@ -103,17 +108,43 @@ class EmSequelAsync::Mysql
       deferrable.callback do |result|
         log(:debug, "(%.6fs) [OK] %s" % [ Time.now - start, query ])
         
-        callback.call(result, (Time.now - start).to_f, connection)
+        callback and callback.call(result, (Time.now - start).to_f, connection)
 
         self.add(connection)
       end
       deferrable.errback do |err|
-        log(:error, "(%.6fs) [ERR] %s (%s: %s)" % [ Time.now - start, query, err.class, err ])
-        log(:error, err.backtrace)
+        handled = false
 
-        callback.call(false, (Time.now - start).to_f, connection, err)
+        case (err)
+        when Mysql2::Error
+          case (e.message)
+          when /^Deadlock/i
+            self.delegate_query(connection, query, callback)
 
-        self.add(connection)
+            handled = true
+          when /Duplicate entry/i
+            callback and callback.call(nil, (Time.now - start).to_f, connection)
+
+            self.add(connection)
+
+            handled = true
+          when /MySQL server has gone away|Lost connection/i
+            @query_queue.push(query)
+
+            self.remove(connection)
+
+            handled = true
+          end
+        end
+
+        unless (handled)
+          log(:error, "(%.6fs) [ERR] %s (%s: %s)" % [ Time.now - start, query, err.class, err ])
+          log(:error, err.backtrace)
+
+          callback and callback.call(false, (Time.now - start).to_f, connection, err)
+
+          self.add(connection)
+        end
       end
     end
     
