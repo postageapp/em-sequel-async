@@ -5,11 +5,11 @@
 
 Gem::Specification.new do |s|
   s.name = "em-sequel-async"
-  s.version = "0.1.2"
+  s.version = "0.1.3"
 
   s.required_rubygems_version = Gem::Requirement.new(">= 0") if s.respond_to? :required_rubygems_version=
   s.authors = ["Scott Tadman"]
-  s.date = "2012-11-22"
+  s.date = "2012-11-27"
   s.description = "Implements a number of asynchronous helper methods for Sequel"
   s.email = "scott@twg.ca"
   s.extra_rdoc_files = [

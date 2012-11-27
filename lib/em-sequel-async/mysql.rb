@@ -8,7 +8,7 @@ class EmSequelAsync::Mysql
     end
     
     def self.size
-      @size ||= 4
+      @size ||= 32
     end
     
     def self.trace?
@@ -51,7 +51,7 @@ class EmSequelAsync::Mysql
       @connection_pool = [ ]
       @connections_active = { }
       
-      @connection_limit = @options[:connections] || self.class.size
+      @connection_limit = db.opts[:connections] || self.class.size
       
       if (EventMachine.reactor_running? and self.class.trace?)
         EventMachine::PeriodicTimer.new(1) do
@@ -61,6 +61,8 @@ class EmSequelAsync::Mysql
             f.puts @options[:database]
 
             @connections.each do |c, x|
+              next unless (x)
+              
               f.puts "\t#{c.inspect} -> #{x.inspect}"
             end
             @connection_pool.each do |c|
@@ -117,19 +119,19 @@ class EmSequelAsync::Mysql
 
         case (err)
         when Mysql2::Error
-          case (e.message)
+          case (err.message)
           when /^Deadlock/i
             self.delegate_query(connection, query, callback)
 
             handled = true
           when /Duplicate entry/i
-            callback and callback.call(nil, (Time.now - start).to_f, connection)
+            callback and callback.call(nil, (Time.now - start).to_f, connection, err)
 
             self.add(connection)
 
             handled = true
           when /MySQL server has gone away|Lost connection/i
-            @query_queue.push(query)
+            @query_queue << [ query, callback ]
 
             self.remove(connection)
 
@@ -158,6 +160,14 @@ class EmSequelAsync::Mysql
       @connections_active[connection] = true
       
       connection
+
+    rescue Mysql2::Error => err
+      case (err.message)
+      when /Too many connections/i
+        return
+      else
+        raise err
+      end
     end
 
     def query(query, callback = nil, &block)
