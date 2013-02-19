@@ -114,6 +114,7 @@ class EmSequelAsync::Mysql
 
         self.add(connection)
       end
+
       deferrable.errback do |err|
         handled = false
 
@@ -147,6 +148,16 @@ class EmSequelAsync::Mysql
 
           self.add(connection)
         end
+      end
+
+    rescue Mysql2::Error => err
+      case (err.message)
+      when /MySQL server has gone away|Lost connection/i
+        @query_queue << [ query, callback ]
+
+        self.remove(connection)
+
+        handled = true
       end
     end
     
