@@ -5,22 +5,23 @@
 
 Gem::Specification.new do |s|
   s.name = "em-sequel-async"
-  s.version = "0.1.4"
+  s.version = "0.1.5"
 
   s.required_rubygems_version = Gem::Requirement.new(">= 0") if s.respond_to? :required_rubygems_version=
   s.authors = ["Scott Tadman"]
-  s.date = "2013-02-19"
+  s.date = "2013-09-10"
   s.description = "Implements a number of asynchronous helper methods for Sequel"
   s.email = "scott@twg.ca"
   s.extra_rdoc_files = [
     "LICENSE.txt",
-    "README.rdoc"
+    "README.md"
   ]
   s.files = [
     ".document",
     "Gemfile",
     "LICENSE.txt",
-    "README.rdoc",
+    "README.md",
+    "RELEASES.txt",
     "Rakefile",
     "VERSION",
     "em-sequel-async.gemspec",
@@ -34,7 +35,7 @@ Gem::Specification.new do |s|
   s.homepage = "http://github.com/tadman/em-sequel-async"
   s.licenses = ["MIT"]
   s.require_paths = ["lib"]
-  s.rubygems_version = "1.8.24"
+  s.rubygems_version = "1.8.23"
   s.summary = "Asynchronous Helper Methods for Sequel"
 
   if s.respond_to? :specification_version then

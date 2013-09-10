@@ -1,0 +1,9 @@
+0.1.5
+ - Resolved issue with stale connections not being removed from pools
+   correctly. Will retry dead connections every ten seconds.
+0.1.4
+0.1.3
+0.1.2
+0.1.1
+0.1.0
+ - Initial version

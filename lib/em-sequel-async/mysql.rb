@@ -132,9 +132,11 @@ class EmSequelAsync::Mysql
 
             handled = true
           when /MySQL server has gone away|Lost connection/i
-            @query_queue << [ query, callback ]
-
             self.remove(connection)
+
+            EventMachine::Timer.new(10) do
+              self.query(query, &callback)
+            end
 
             handled = true
           end
@@ -153,11 +155,11 @@ class EmSequelAsync::Mysql
     rescue Mysql2::Error => err
       case (err.message)
       when /MySQL server has gone away|Lost connection/i
-        @query_queue << [ query, callback ]
-
         self.remove(connection)
 
-        handled = true
+        EventMachine::Timer.new(10) do
+          self.query(query, &callback)
+        end
       end
     end
     
