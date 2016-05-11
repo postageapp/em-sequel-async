@@ -59,7 +59,7 @@ def database_defaults
     {
       adapter: 'mysql2',
       host: 'localhost',
-      username: 'test',
+      username: 'root',
       password: ''
     }.merge(config)
   end
