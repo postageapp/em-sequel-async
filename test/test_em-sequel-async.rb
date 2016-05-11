@@ -1,38 +1,18 @@
-require File.expand_path('helper', File.dirname(__FILE__))
+require_relative './helper'
 
-DB_CONFIG = {
-  :default => {
-    :adapter => 'mysql2',
-    :username => 'test',
-    :password => 'JAQv0RM6xFVb8yz06GiQ7mOq',
-    :database => 'emsa_test_default'
-  },
-  :a => {
-    :adapter => 'mysql2',
-    :username => 'test',
-    :password => 'JAQv0RM6xFVb8yz06GiQ7mOq',
-    :database => 'emsa_test_a'
-  },
-  :b => {
-    :adapter => 'mysql2',
-    :username => 'test',
-    :password => 'JAQv0RM6xFVb8yz06GiQ7mOq',
-    :database => 'emsa_test_b'
-  }
-}.freeze
-
-DB = Hash[DB_CONFIG.collect { |db, config| [ db, Sequel.connect(config) ] }]
+DB = Hash[database_config.collect { |db, config| [ db, Sequel.connect(config) ] }]
 
 {
-  :default => %w[ db_default_a_models db_default_b_models ],
-  :a => %w[ example_as ],
-  :b => %w[ example_bs ]
+  default: %w[ db_default_a_models db_default_b_models ],
+  a: %w[ example_as ],
+  b: %w[ example_bs ]
 }.each do |db, tables|
-  create_config = DB_CONFIG[db].dup
+  create_config = database_config[db].dup
   db_name = create_config.delete(:database)
   
   handle = Mysql2::Client.new(create_config)
-  db_name = DB_CONFIG[db][:database]
+
+  db_name = database_config[db][:database]
   
   handle.query("DROP DATABASE IF EXISTS `#{db_name}`")
   handle.query("CREATE DATABASE `#{db_name}`")
@@ -79,7 +59,7 @@ class TestEmSequelAsync < Test::Unit::TestCase
     em do
       await do
         DbDefaultAModel.async_insert(
-          :data => 'Test Name',
+          data: 'Test Name',
           &defer do |id|
             inserted_id = id
           end
@@ -102,21 +82,21 @@ class TestEmSequelAsync < Test::Unit::TestCase
     em do
       await do
         DbDefaultAModel.async_insert(
-          :data => 'Test Name',
+          data: 'Test Name',
           &defer do |id|
             inserted_id = id
             
             assert inserted_id > 0
 
-            DbDefaultAModel.where(:id => inserted_id).async_count(
+            DbDefaultAModel.where(id: inserted_id).async_count(
               &defer do |count|
                 found_count = count
               end
             )
 
             DbDefaultAModel.async_insert_ignore(
-              :id => inserted_id,
-              :data => 'Duplicate',
+              id: inserted_id,
+              data: 'Duplicate',
               &defer do |count|
                 inserted_count = count
               end
@@ -135,19 +115,19 @@ class TestEmSequelAsync < Test::Unit::TestCase
       inserted_count = nil
       
       await do |a|
-        DbDefaultAModel.where(:id => inserted_id).async_delete(
+        DbDefaultAModel.where(id: inserted_id).async_delete(
           &defer do |count|
             deleted_count = count
             
             assert_equal 1, deleted_count
 
-            DbDefaultAModel.where(:id => inserted_id).async_count(
+            DbDefaultAModel.where(id: inserted_id).async_count(
               &defer do |count|
                 found_count = count
 
                 DbDefaultAModel.async_insert_ignore(
-                  :id => inserted_id,
-                  :data => 'Duplicate',
+                  id: inserted_id,
+                  data: 'Duplicate',
                   &defer do |count|
                     inserted_count = count
                   end
@@ -187,13 +167,13 @@ class TestEmSequelAsync < Test::Unit::TestCase
       
       await do
         DbDefaultAModel.async_insert(
-          :data => 'Test Name',
+          data: 'Test Name',
           &defer do |id|
             inserted_id = id
             
             DbDefaultAModel.async_insert(
-              :id => inserted_id,
-              :data => 'Duplicate',
+              id: inserted_id,
+              data: 'Duplicate',
               &defer do |*f|
                 duplicate_id = f[0]
               end

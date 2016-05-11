@@ -27,8 +27,8 @@ class EmSequelAsync::Mysql
     
     def initialize(db)
       @options = {
-        :symbolize_keys => true,
-        :cast_booleans => true
+        symbolize_keys: true,
+        cast_booleans: true
       }
 
       db.opts.each do |key, value|

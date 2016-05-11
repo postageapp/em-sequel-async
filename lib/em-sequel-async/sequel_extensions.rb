@@ -47,8 +47,8 @@ module EmSequelAsync::SequelExtensions
     
     module InstanceMethods
       STOCK_COUNT_OPTS = {
-        :select => [ Sequel::LiteralString.new("COUNT(*)").freeze ],
-        :order => nil
+        select: [ Sequel::LiteralString.new("COUNT(*)").freeze ],
+        order: nil
       }.freeze
       
       def async_insert(*args)
