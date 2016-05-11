@@ -111,7 +111,7 @@ class TestEmSequelAsync < Test::Unit::TestCase
     
     em do
       found_count = nil
-      delete_count = nil
+      deleted_count = nil
       inserted_count = nil
       
       await do |a|
@@ -122,14 +122,14 @@ class TestEmSequelAsync < Test::Unit::TestCase
             assert_equal 1, deleted_count
 
             DbDefaultAModel.where(id: inserted_id).async_count(
-              &defer do |count|
-                found_count = count
+              &defer do |_count|
+                found_count = _count
 
                 DbDefaultAModel.async_insert_ignore(
                   id: inserted_id,
                   data: 'Duplicate',
-                  &defer do |count|
-                    inserted_count = count
+                  &defer do |__count|
+                    inserted_count = __count
                   end
                 )
               end
