@@ -106,7 +106,11 @@ class EmSequelAsync::Mysql
       @connections[connection] = [ query, callback ]
 
       start = Time.now
-      deferrable = connection.query(query, :database_timezone => @db.timezone, :application_timezone => Sequel.application_timezone)
+      deferrable = connection.query(
+        query,
+        database_timezone: @db.timezone,
+        application_timezone: Sequel.application_timezone
+      )
       
       deferrable.callback do |result|
         log(:debug, "(%.6fs) [OK] %s" % [ Time.now - start, query ])
