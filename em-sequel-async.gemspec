@@ -13,13 +13,14 @@ Gem::Specification.new do |s|
   s.authors = ["Scott Tadman"]
   s.date = "2016-05-11"
   s.description = "Implements a number of asynchronous helper methods for Sequel"
-  s.email = "scott@twg.ca"
+  s.email = "tadman@postageapp.com"
   s.extra_rdoc_files = [
     "LICENSE.txt",
     "README.md"
   ]
   s.files = [
     ".document",
+    ".travis.yml",
     "Gemfile",
     "LICENSE.txt",
     "README.md",
