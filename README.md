@@ -21,5 +21,5 @@ To test:
 
 ## Copyright
 
-Copyright (c) 2012-2016 Scott Tadman, The Working Group Inc.
+Copyright (c) 2012-2019 Scott Tadman, PostageApp Ltd.
 See LICENSE.txt for further details.
